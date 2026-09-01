@@ -169,7 +169,8 @@ class BenchmarkEvaluator:
         self,
         test_dataset: Optional[List[Dict[str, Any]]] = None,
         save_report: bool = True,
-        output_path: Optional[Path] = None
+        output_path: Optional[Path] = None,
+        progress_callback: Optional[Any] = None
     ) -> Dict[str, Any]:
         """
         Runs evaluation across benchmark dataset, executing the pipeline on each query.
@@ -185,6 +186,12 @@ class BenchmarkEvaluator:
             reference = item.get("reference_answer", "")
             gt_context = item.get("ground_truth_context", "")
             category = item.get("category", "General")
+
+            if progress_callback is not None:
+                try:
+                    progress_callback(idx, len(dataset), question)
+                except Exception:
+                    pass
 
             t0 = time.time()
             if self.agent is not None:

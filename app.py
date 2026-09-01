@@ -430,18 +430,39 @@ with tab_eval:
     st.markdown("### 📊 Automated RAGAS Benchmark Suite")
     st.markdown("Run automated evaluation over a curated synthetic test dataset measuring **Faithfulness**, **Answer Relevancy**, **Context Precision**, and **Context Recall**.")
 
-    col_btn, col_info = st.columns([1, 3])
+    col_scope, col_btn = st.columns([2, 1])
+    with col_scope:
+        bench_count = st.radio(
+            "Benchmark Scope:",
+            [3, 5, 10],
+            index=0,
+            horizontal=True,
+            format_func=lambda x: f"⚡ Quick ({x} Queries)" if x == 3 else (f"🔍 Standard ({x} Queries)" if x == 5 else f"🚀 Full Suite ({x} Queries)")
+        )
     with col_btn:
-        run_eval_btn = st.button("🚀 Run 10-Query Benchmark", type="primary", use_container_width=True)
-    with col_info:
-        st.caption("Evaluates retrieval precision, factual groundedness, semantic alignment, and latency across technical, architectural, and security policy queries.")
+        st.write("")
+        st.write("")
+        run_eval_btn = st.button(f"🚀 Run Benchmark ({bench_count})", type="primary", use_container_width=True)
 
     if run_eval_btn:
-        with st.spinner("Executing CRAG pipeline across benchmark dataset..."):
-            evaluator = BenchmarkEvaluator(agent=agent)
-            report = evaluator.evaluate_pipeline(save_report=True)
-            st.session_state.eval_report = report
-            st.success("Benchmark evaluation completed successfully!")
+        progress_bar = st.progress(0.0)
+        status_box = st.empty()
+
+        def update_progress(current_idx: int, total: int, q_text: str):
+            pct = float(current_idx - 1) / float(total)
+            progress_bar.progress(pct)
+            status_box.info(f"⏳ **Evaluating query [{current_idx}/{total}]**: *{q_text[:70]}...*")
+
+        evaluator = BenchmarkEvaluator(agent=agent)
+        from src.evaluate import SYNTHETIC_BENCHMARK_DATASET
+        subset = SYNTHETIC_BENCHMARK_DATASET[:bench_count]
+        
+        report = evaluator.evaluate_pipeline(test_dataset=subset, progress_callback=update_progress, save_report=True)
+        progress_bar.progress(1.0)
+        status_box.empty()
+        progress_bar.empty()
+        st.session_state.eval_report = report
+        st.success(f"Benchmark evaluation across {len(subset)} queries completed successfully!")
 
     if st.session_state.eval_report is not None:
         report = st.session_state.eval_report
