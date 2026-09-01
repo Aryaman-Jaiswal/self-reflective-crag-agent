@@ -1,0 +1,24 @@
+# Environment variables and secrets
+.env
+.env.local
+*.env
+
+# Python Cache & Bytecode
+__pycache__/
+*.py[cod]
+*$py.class
+.pytest_cache/
+.coverage
+htmlcov/
+
+# Local Vector Store & Uploads
+data/uploads/
+data/qdrant_db/
+data/ragas_benchmark_report.json
+data/ragas_benchmark_report.csv
+
+# IDE & OS files
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db
