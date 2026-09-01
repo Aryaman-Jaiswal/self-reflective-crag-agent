@@ -48,13 +48,22 @@ def _safe_json_loads(raw_text: str) -> Dict[str, Any]:
     elif "```" in cleaned:
         cleaned = cleaned.split("```")[1].split("```")[0].strip()
 
+    # Pre-emptively escape common LaTeX commands (\frac, \sqrt, \text, \alpha, \sum) before JSON parse
+    # so json.loads does not convert \f into FormFeed (\x0c) or fail on invalid escapes
+    escaped = re.sub(r'\\(frac|sqrt|text|alpha|beta|sum|prod|partial|left|right|times|div|hat|bar|quad)', r'\\\\\1', cleaned)
+
     # 1. Direct JSON parse
+    try:
+        return json.loads(escaped)
+    except Exception:
+        pass
+
     try:
         return json.loads(cleaned)
     except Exception:
         pass
 
-    # 2. Fix unescaped backslashes (e.g. \frac, \sqrt, \alpha in LaTeX)
+    # 2. Fix remaining unescaped backslashes
     try:
         sanitized = re.sub(r'\\(?![/"\\bfnrtu])', r'\\\\', cleaned)
         return json.loads(sanitized)
@@ -87,26 +96,22 @@ def _safe_json_loads(raw_text: str) -> Dict[str, Any]:
 
 def format_latex_safely(text: str) -> str:
     """
-    Ensure all LaTeX math equations (including unescaped formulas or sliced blocks) render cleanly
-    without unclosed delimiters or broken backslashes.
+    Safely format LLM outputs, repairing formfeeds and wrapping isolated LaTeX commands.
+    Does NOT modify text that is already inside valid LaTeX blocks ($ or $$).
     """
     if not text:
         return ""
     
-    # 1. Wrap standalone LaTeX expressions in $ if not already enclosed
-    # e.g. "factor \frac{1}{\sqrt{d_k}}" -> "factor $\frac{1}{\sqrt{d_k}}$"
-    text = re.sub(r'(?<!\$)\\frac\{([^{}]+)\}\{([^{}]+)\}(?!\$)', r'$\\frac{\1}{\2}$', text)
-    text = re.sub(r'(?<!\$)\\sqrt\{([^{}]+)\}(?!\$)', r'$\\sqrt{\1}$', text)
-    text = re.sub(r'(?<!\$)\\text\{([^{}]+)\}(?!\$)', r'$\\text{\1}$', text)
+    # 1. Restore any control characters converted from LaTeX backslashes
+    text = text.replace("\x0c", "\\f")  # Form Feed -> \f (e.g. \frac)
+    text = text.replace("\x08", "\\b")  # Backspace -> \b
+    text = text.replace("\x07", "\\a")  # Bell -> \a
 
-    # 2. Fix broken unclosed $$ display blocks caused by snippet slicing
-    if text.count("$$") % 2 != 0:
-        text = text + "\n$$"
-
-    # 3. Fix broken unclosed $ inline blocks
-    stripped_dd = text.replace("$$", "")
-    if stripped_dd.count("$") % 2 != 0:
-        text = text + "$"
+    # 2. If the text has NO math delimiters ($ or $$) but contains LaTeX commands (\frac, \sqrt),
+    # wrap the standalone formula in $...$
+    if "$" not in text:
+        text = re.sub(r'(\\frac\{[^{}]+\}\{[^{}]+\})', r'$\1$', text)
+        text = re.sub(r'(\\sqrt\{[^{}]+\})', r'$\1$', text)
 
     return text
 
@@ -212,7 +217,7 @@ class CRAGPipeline:
             "chunks": [
                 {
                     "id": d.id,
-                    "content_snippet": format_latex_safely(d.page_content),
+                    "content_snippet": d.page_content,
                     "dense_score": d.dense_score,
                     "sparse_score": d.sparse_score,
                     "hybrid_score": d.hybrid_score,
@@ -282,7 +287,7 @@ class CRAGPipeline:
                 "source": doc.metadata.get("source", "unknown"),
                 "grade": doc.relevance_grade,
                 "rationale": format_latex_safely(rationale),
-                "content_preview": format_latex_safely(doc.page_content)
+                "content_preview": doc.page_content
             })
 
             if is_rel:
