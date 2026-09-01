@@ -361,89 +361,66 @@ with tab_chat:
                         
                         chunks_data = step.get("chunks", [])
                         for c in chunks_data:
-                            st.markdown(f"""
-                            <div class="crag-card" style="padding: 12px 16px; margin-bottom: 8px;">
-                                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px;">
-                                    <span style="font-weight: 600; color: #93C5FD;">#{c.get('rank')} | Source: {c.get('source')}</span>
-                                    <div>
-                                        <span class="badge badge-score">Dense: {c.get('dense_score')}</span>
-                                        <span class="badge badge-score">Sparse: {c.get('sparse_score')}</span>
-                                        <span class="badge badge-score">Hybrid: {c.get('hybrid_score')}</span>
-                                        <span class="badge badge-grounded">Cross-Encoder: {c.get('rerank_score')}</span>
-                                    </div>
-                                </div>
-                                <div style="font-size: 0.88rem; color: #CBD5E1; font-family: 'JetBrains Mono', monospace;">
-                                    {c.get('content_snippet')}
-                                </div>
-                            </div>
-                            """, unsafe_allow_html=True)
+                            with st.container(border=True):
+                                col_hdr1, col_hdr2 = st.columns([1, 2])
+                                with col_hdr1:
+                                    st.markdown(f"**#{c.get('rank')} | Source: `{c.get('source')}`**")
+                                with col_hdr2:
+                                    st.markdown(
+                                        f"<div style='text-align: right;'>"
+                                        f"<span class='badge badge-score'>Dense: {c.get('dense_score')}</span> "
+                                        f"<span class='badge badge-score'>Sparse: {c.get('sparse_score')}</span> "
+                                        f"<span class='badge badge-score'>Hybrid: {c.get('hybrid_score')}</span> "
+                                        f"<span class='badge badge-grounded'>Cross-Encoder: {c.get('rerank_score')}</span>"
+                                        f"</div>",
+                                        unsafe_allow_html=True
+                                    )
+                                st.markdown(c.get('content_snippet', ''))
 
                 # Step: Document Relevance Grading
                 elif step_name == "grade_documents":
                     with st.expander(f"📍 Step {step_idx}: Document Relevance Grading", expanded=True):
-                        st.caption(f"Evaluated {step.get('total_evaluated')} chunks $\\rightarrow$ {step.get('vetted_count')} marked relevant for answer synthesis.")
+                        st.caption(f"Evaluated {step.get('total_evaluated')} chunks → {step.get('vetted_count')} marked relevant for answer synthesis.")
                         for d in step.get("details", []):
                             is_rel = d.get("grade") == "relevant"
                             badge_class = "badge-relevant" if is_rel else "badge-irrelevant"
-                            border_color = "rgba(16, 185, 129, 0.4)" if is_rel else "rgba(239, 68, 68, 0.4)"
-                            
-                            st.markdown(f"""
-                            <div class="crag-card" style="border-left: 3px solid {border_color}; padding: 12px 16px; margin-bottom: 8px;">
-                                <div style="display: flex; justify-content: space-between; align-items: center;">
-                                    <span style="font-weight: 600; color: #E2E8F0;">Chunk ID: {d.get('chunk_id')} ({d.get('source')})</span>
-                                    <span class="badge {badge_class}">{d.get('grade')}</span>
-                                </div>
-                                <div style="font-size: 0.85rem; color: #94A3B8; margin-top: 4px;">
-                                    <b>Rationale:</b> {d.get('rationale')}
-                                </div>
-                                <div style="font-size: 0.8rem; color: #64748B; margin-top: 4px; font-style: italic;">
-                                    "{d.get('content_preview')}"
-                                </div>
-                            </div>
-                            """, unsafe_allow_html=True)
+                            with st.container(border=True):
+                                col_g1, col_g2 = st.columns([3, 1])
+                                with col_g1:
+                                    st.markdown(f"**Chunk ID: `{d.get('chunk_id')}`** ({d.get('source')})")
+                                with col_g2:
+                                    st.markdown(f"<div style='text-align: right;'><span class='badge {badge_class}'>{d.get('grade').upper()}</span></div>", unsafe_allow_html=True)
+                                st.markdown(f"**Rationale:** {d.get('rationale')}")
+                                st.markdown(f"*{d.get('content_preview')}*")
 
                 # Step: Query Rewriting
                 elif step_name == "rewrite_query":
                     with st.expander(f"📍 Step {step_idx}: Query Transformation & Semantic Expansion", expanded=True):
-                        st.markdown(f"""
-                        <div class="crag-card" style="border-left: 3px solid #FBBF24;">
-                            <span class="badge badge-rewrite">Retry Attempt #{step.get('retry_count')}</span>
-                            <div style="margin-top: 8px;"><b>Original Query:</b> <code>{step.get('original_query')}</code></div>
-                            <div style="margin-top: 6px;"><b>Optimized Rewritten Query:</b> <code style="color: #38BDF8;">{step.get('rewritten_query')}</code></div>
-                            <div style="margin-top: 6px; font-size: 0.85rem; color: #94A3B8;"><b>Reasoning:</b> {step.get('reasoning')}</div>
-                        </div>
-                        """, unsafe_allow_html=True)
+                        with st.container(border=True):
+                            st.markdown(f"<span class='badge badge-rewrite'>Retry Attempt #{step.get('retry_count')}</span>", unsafe_allow_html=True)
+                            st.markdown(f"**Original Query:** `{step.get('original_query')}`")
+                            st.markdown(f"**Optimized Rewritten Query:** `{step.get('rewritten_query')}`")
+                            st.markdown(f"**Reasoning:** {step.get('reasoning')}")
 
                 # Step: Hallucination Verification
                 elif step_name == "hallucination_check":
                     with st.expander(f"📍 Step {step_idx}: Self-Reflective Hallucination Audit", expanded=True):
                         is_grounded = step.get("grade") == "grounded"
                         badge_class = "badge-grounded" if is_grounded else "badge-irrelevant"
-                        border_color = "#38BDF8" if is_grounded else "#F87171"
-
-                        st.markdown(f"""
-                        <div class="crag-card" style="border-left: 3px solid {border_color};">
-                            <div style="display: flex; justify-content: space-between; align-items: center;">
-                                <span style="font-weight: 600;">Faithfulness Audit Result</span>
-                                <span class="badge {badge_class}">{step.get('grade')}</span>
-                            </div>
-                            <div style="margin-top: 8px; font-size: 0.9rem; color: #CBD5E1;">
-                                <b>Audit Assessment:</b> {step.get('rationale')}
-                            </div>
-                        </div>
-                        """, unsafe_allow_html=True)
+                        with st.container(border=True):
+                            col_h1, col_h2 = st.columns([3, 1])
+                            with col_h1:
+                                st.markdown("**Faithfulness Audit Assessment**")
+                            with col_h2:
+                                st.markdown(f"<div style='text-align: right;'><span class='badge {badge_class}'>{step.get('grade').upper()}</span></div>", unsafe_allow_html=True)
+                            st.markdown(f"**Assessment:** {step.get('rationale')}")
 
                 # Step: Fallback Generation
                 elif step_name == "generate_fallback":
                     with st.expander(f"📍 Step {step_idx}: Fallback Handling", expanded=True):
-                        st.markdown(f"""
-                        <div class="crag-card" style="border-left: 3px solid #F87171;">
-                            <span class="badge badge-irrelevant">Graceful Fallback</span>
-                            <div style="margin-top: 8px; color: #E2E8F0;">
-                                {step.get('reason')} (Exhausted {step.get('retry_count')} rewrite attempts).
-                            </div>
-                        </div>
-                        """, unsafe_allow_html=True)
+                        with st.container(border=True):
+                            st.markdown("<span class='badge badge-irrelevant'>Graceful Fallback</span>", unsafe_allow_html=True)
+                            st.markdown(f"{step.get('reason')} (Exhausted {step.get('retry_count')} rewrite attempts).")
 
 
 # ==========================================
