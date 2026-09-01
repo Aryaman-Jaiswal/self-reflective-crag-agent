@@ -219,7 +219,17 @@ with st.sidebar:
         if api_key_input:
             settings.openai_api_key = api_key_input
     elif selected_provider == "gemini":
-        model_name = st.selectbox("Gemini Model", ["gemini-3.7-flash", "gemini-3.5-flash-lite", "gemini-1.5-flash", "gemini-1.5-pro"], index=0)
+        gemini_options = [
+            "gemini-flash-lite-latest",
+            "gemini-3.5-flash-lite",
+            "gemini-3.6-flash",
+            "gemini-3.1-flash-lite",
+            "gemini-3-flash-preview",
+            "gemini-3.7-flash",
+            "gemini-1.5-flash",
+            "gemini-1.5-pro"
+        ]
+        model_name = st.selectbox("Gemini Model", gemini_options, index=0)
         api_key_input = st.text_input("Google API Key", value=settings.google_api_key or "", type="password")
         if api_key_input:
             settings.google_api_key = api_key_input

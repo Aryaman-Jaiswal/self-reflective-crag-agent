@@ -16,6 +16,30 @@ from src.llm_factory import get_llm
 logger = logging.getLogger(__name__)
 
 
+def _extract_text(response: Any) -> str:
+    """Safely extract plain text from LLM response (handling strings, lists of content blocks, etc.)."""
+    if hasattr(response, "content"):
+        content = response.content
+    else:
+        content = response
+
+    if isinstance(content, str):
+        return content.strip()
+    elif isinstance(content, list):
+        parts = []
+        for item in content:
+            if isinstance(item, str):
+                parts.append(item)
+            elif isinstance(item, dict):
+                parts.append(item.get("text", "") or str(item))
+            elif hasattr(item, "text"):
+                parts.append(getattr(item, "text", ""))
+            else:
+                parts.append(str(item))
+        return "\n".join(parts).strip()
+    return str(content).strip()
+
+
 class GraphState(TypedDict):
     """LangGraph State holding conversational context and CRAG pipeline artifacts."""
     query: str
@@ -166,8 +190,8 @@ class CRAGPipeline:
                     HumanMessage(content=user_prompt)
                 ])
                 
-                # Parse JSON response
-                raw_text = response.content.strip()
+                # Parse JSON response using safe text extraction
+                raw_text = _extract_text(response)
                 # Strip markdown code fencing if present
                 if "```json" in raw_text:
                     raw_text = raw_text.split("```json")[1].split("```")[0].strip()
@@ -234,7 +258,7 @@ class CRAGPipeline:
                 SystemMessage(content=system_prompt),
                 HumanMessage(content=user_prompt)
             ])
-            raw_text = response.content.strip()
+            raw_text = _extract_text(response)
             if "```json" in raw_text:
                 raw_text = raw_text.split("```json")[1].split("```")[0].strip()
             elif "```" in raw_text:
@@ -305,7 +329,7 @@ class CRAGPipeline:
                 SystemMessage(content=system_prompt),
                 HumanMessage(content=user_prompt)
             ])
-            generation = response.content.strip()
+            generation = _extract_text(response)
         except Exception as e:
             logger.error(f"Generation error: {e}")
             generation = "An error occurred while generating the grounded answer from vetted context."
@@ -378,7 +402,7 @@ class CRAGPipeline:
                 SystemMessage(content=system_prompt),
                 HumanMessage(content=user_prompt)
             ])
-            raw_text = response.content.strip()
+            raw_text = _extract_text(response)
             if "```json" in raw_text:
                 raw_text = raw_text.split("```json")[1].split("```")[0].strip()
             elif "```" in raw_text:
