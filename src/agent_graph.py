@@ -1,7 +1,4 @@
-"""
-LangGraph State Machine for Self-Reflective Corrective RAG (CRAG) Agent.
-"""
-
+import re
 import json
 import logging
 from typing import TypedDict, List, Dict, Any, Optional
@@ -38,6 +35,54 @@ def _extract_text(response: Any) -> str:
                 parts.append(str(item))
         return "\n".join(parts).strip()
     return str(content).strip()
+
+
+def _safe_json_loads(raw_text: str) -> Dict[str, Any]:
+    """
+    Safely parse JSON from LLM output, handling markdown code fences, unescaped LaTeX math,
+    and regex fallback extraction.
+    """
+    cleaned = raw_text.strip()
+    if "```json" in cleaned:
+        cleaned = cleaned.split("```json")[1].split("```")[0].strip()
+    elif "```" in cleaned:
+        cleaned = cleaned.split("```")[1].split("```")[0].strip()
+
+    # 1. Direct JSON parse
+    try:
+        return json.loads(cleaned)
+    except Exception:
+        pass
+
+    # 2. Fix unescaped backslashes (e.g. \frac, \sqrt, \alpha in LaTeX)
+    try:
+        sanitized = re.sub(r'\\(?![/"\\bfnrtu])', r'\\\\', cleaned)
+        return json.loads(sanitized)
+    except Exception:
+        pass
+
+    # 3. Regex Fallback extraction of key fields
+    extracted: Dict[str, Any] = {}
+    score_m = re.search(r'"score"\s*:\s*"([^"]+)"', cleaned, re.IGNORECASE)
+    if score_m:
+        extracted["score"] = score_m.group(1)
+
+    rationale_m = re.search(r'"rationale"\s*:\s*"([^"]+)"', cleaned, re.IGNORECASE)
+    if rationale_m:
+        extracted["rationale"] = rationale_m.group(1)
+
+    improved_m = re.search(r'"improved_query"\s*:\s*"([^"]+)"', cleaned, re.IGNORECASE)
+    if improved_m:
+        extracted["improved_query"] = improved_m.group(1)
+
+    reasoning_m = re.search(r'"reasoning"\s*:\s*"([^"]+)"', cleaned, re.IGNORECASE)
+    if reasoning_m:
+        extracted["reasoning"] = reasoning_m.group(1)
+
+    if extracted:
+        return extracted
+
+    raise ValueError(f"Could not parse valid JSON from text: {cleaned[:100]}")
 
 
 class GraphState(TypedDict):
@@ -190,15 +235,9 @@ class CRAGPipeline:
                     HumanMessage(content=user_prompt)
                 ])
                 
-                # Parse JSON response using safe text extraction
+                # Parse JSON response using safe text extraction and escape sanitizer
                 raw_text = _extract_text(response)
-                # Strip markdown code fencing if present
-                if "```json" in raw_text:
-                    raw_text = raw_text.split("```json")[1].split("```")[0].strip()
-                elif "```" in raw_text:
-                    raw_text = raw_text.split("```")[1].split("```")[0].strip()
-                
-                parsed = json.loads(raw_text)
+                parsed = _safe_json_loads(raw_text)
                 is_rel = parsed.get("score", "no").lower() == "yes"
                 rationale = parsed.get("rationale", "")
             except Exception as e:
@@ -259,12 +298,7 @@ class CRAGPipeline:
                 HumanMessage(content=user_prompt)
             ])
             raw_text = _extract_text(response)
-            if "```json" in raw_text:
-                raw_text = raw_text.split("```json")[1].split("```")[0].strip()
-            elif "```" in raw_text:
-                raw_text = raw_text.split("```")[1].split("```")[0].strip()
-            
-            parsed = json.loads(raw_text)
+            parsed = _safe_json_loads(raw_text)
             improved = parsed.get("improved_query", original_query)
             reasoning = parsed.get("reasoning", "Expanded query with semantic synonyms.")
         except Exception as e:
@@ -403,12 +437,7 @@ class CRAGPipeline:
                 HumanMessage(content=user_prompt)
             ])
             raw_text = _extract_text(response)
-            if "```json" in raw_text:
-                raw_text = raw_text.split("```json")[1].split("```")[0].strip()
-            elif "```" in raw_text:
-                raw_text = raw_text.split("```")[1].split("```")[0].strip()
-            
-            parsed = json.loads(raw_text)
+            parsed = _safe_json_loads(raw_text)
             is_grounded = parsed.get("score", "yes").lower() == "yes"
             rationale = parsed.get("rationale", "Answer is strictly grounded.")
             hallucinated_statements = parsed.get("hallucinated_statements", [])

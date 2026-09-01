@@ -336,25 +336,15 @@ with tab_chat:
             st.markdown("### 📝 Synthesized Grounded Response")
             generation_text = pipeline_state.get("generation", "No response generated.")
             
-            # Format in-text citation tags [Doc 1] to colored HTML badges
-            import re
-            formatted_answer = re.sub(
-                r'\[Doc(?:ument)?\s*(\d+)\]',
-                r'<span class="citation-tag">Doc \1</span>',
-                generation_text
-            )
-
-            st.markdown(f"""
-            <div class="crag-card" style="border-left: 4px solid #38BDF8; background: rgba(15, 23, 42, 0.8);">
-                <div style="font-size: 1.05rem; line-height: 1.6; color: #F1F5F9;">
-                    {formatted_answer}
-                </div>
-                <div style="margin-top: 14px; font-size: 0.8rem; color: #64748B;">
-                    ⏱️ Execution Latency: <b>{latency}s</b> | Retries: <b>{pipeline_state.get('retry_count', 0)}</b> | 
-                    Status: <span class="badge badge-grounded">{pipeline_state.get('hallucination_grade', 'VERIFIED')}</span>
-                </div>
-            </div>
-            """, unsafe_allow_html=True)
+            with st.container(border=True):
+                st.markdown(generation_text)
+                st.markdown(
+                    f"<div style='margin-top: 14px; font-size: 0.82rem; color: #94A3B8; border-top: 1px solid rgba(51, 65, 85, 0.7); padding-top: 10px;'>"
+                    f"⏱️ Execution Latency: <b>{latency}s</b> &nbsp;|&nbsp; Retries: <b>{pipeline_state.get('retry_count', 0)}</b> &nbsp;|&nbsp; "
+                    f"Status: <span style='background: rgba(16, 185, 129, 0.2); color: #34D399; padding: 2px 10px; border-radius: 9999px; font-weight: 600;'>{pipeline_state.get('hallucination_grade', 'GROUNDED').upper()}</span>"
+                    f"</div>",
+                    unsafe_allow_html=True
+                )
 
             # 2. Detailed Execution Trace Visualizer
             st.markdown("### 🔬 Agent Execution Trace & Reflection Loops")
@@ -367,7 +357,7 @@ with tab_chat:
                 if step_name == "retrieve_and_rerank":
                     with st.expander(f"📍 Step {step_idx}: Hybrid Search & Cross-Encoder Reranking", expanded=True):
                         st.markdown(f"**Search Query Used:** `{step.get('active_query')}`")
-                        st.caption(f"Retrieved {step.get('candidates_retrieved')} candidates $\\rightarrow$ Cross-encoder scored top {step.get('top_reranked_count')}")
+                        st.caption(f"Retrieved {step.get('candidates_retrieved')} candidates → Cross-encoder scored top {step.get('top_reranked_count')}")
                         
                         chunks_data = step.get("chunks", [])
                         for c in chunks_data:
