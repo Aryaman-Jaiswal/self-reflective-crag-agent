@@ -336,12 +336,16 @@ with tab_chat:
             st.markdown("### 📝 Synthesized Grounded Response")
             generation_text = pipeline_state.get("generation", "No response generated.")
             
+            status_val = str(pipeline_state.get('hallucination_grade') or ('FALLBACK' if pipeline_state.get('route') == 'fallback' else 'VERIFIED')).upper()
+            status_bg = "rgba(16, 185, 129, 0.2)" if status_val in ("GROUNDED", "VERIFIED") else "rgba(239, 68, 68, 0.2)"
+            status_color = "#34D399" if status_val in ("GROUNDED", "VERIFIED") else "#F87171"
+
             with st.container(border=True):
                 st.markdown(generation_text)
                 st.markdown(
                     f"<div style='margin-top: 14px; font-size: 0.82rem; color: #94A3B8; border-top: 1px solid rgba(51, 65, 85, 0.7); padding-top: 10px;'>"
                     f"⏱️ Execution Latency: <b>{latency}s</b> &nbsp;|&nbsp; Retries: <b>{pipeline_state.get('retry_count', 0)}</b> &nbsp;|&nbsp; "
-                    f"Status: <span style='background: rgba(16, 185, 129, 0.2); color: #34D399; padding: 2px 10px; border-radius: 9999px; font-weight: 600;'>{pipeline_state.get('hallucination_grade', 'GROUNDED').upper()}</span>"
+                    f"Status: <span style='background: {status_bg}; color: {status_color}; padding: 2px 10px; border-radius: 9999px; font-weight: 600;'>{status_val}</span>"
                     f"</div>",
                     unsafe_allow_html=True
                 )
@@ -384,12 +388,13 @@ with tab_chat:
                         for d in step.get("details", []):
                             is_rel = d.get("grade") == "relevant"
                             badge_class = "badge-relevant" if is_rel else "badge-irrelevant"
+                            grade_str = str(d.get('grade') or 'UNKNOWN').upper()
                             with st.container(border=True):
                                 col_g1, col_g2 = st.columns([3, 1])
                                 with col_g1:
                                     st.markdown(f"**Chunk ID: `{d.get('chunk_id')}`** ({d.get('source')})")
                                 with col_g2:
-                                    st.markdown(f"<div style='text-align: right;'><span class='badge {badge_class}'>{d.get('grade').upper()}</span></div>", unsafe_allow_html=True)
+                                    st.markdown(f"<div style='text-align: right;'><span class='badge {badge_class}'>{grade_str}</span></div>", unsafe_allow_html=True)
                                 st.markdown(f"**Rationale:** {d.get('rationale')}")
                                 st.markdown(f"**Chunk Context:**\n\n{d.get('content_preview')}")
 
@@ -407,12 +412,13 @@ with tab_chat:
                     with st.expander(f"📍 Step {step_idx}: Self-Reflective Hallucination Audit", expanded=True):
                         is_grounded = step.get("grade") == "grounded"
                         badge_class = "badge-grounded" if is_grounded else "badge-irrelevant"
+                        audit_str = str(step.get('grade') or 'VERIFIED').upper()
                         with st.container(border=True):
                             col_h1, col_h2 = st.columns([3, 1])
                             with col_h1:
                                 st.markdown("**Faithfulness Audit Assessment**")
                             with col_h2:
-                                st.markdown(f"<div style='text-align: right;'><span class='badge {badge_class}'>{step.get('grade').upper()}</span></div>", unsafe_allow_html=True)
+                                st.markdown(f"<div style='text-align: right;'><span class='badge {badge_class}'>{audit_str}</span></div>", unsafe_allow_html=True)
                             st.markdown(f"**Assessment:** {step.get('rationale')}")
 
                 # Step: Fallback Generation
