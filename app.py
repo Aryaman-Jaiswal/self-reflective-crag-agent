@@ -391,7 +391,7 @@ with tab_chat:
                                 with col_g2:
                                     st.markdown(f"<div style='text-align: right;'><span class='badge {badge_class}'>{d.get('grade').upper()}</span></div>", unsafe_allow_html=True)
                                 st.markdown(f"**Rationale:** {d.get('rationale')}")
-                                st.markdown(f"*{d.get('content_preview')}*")
+                                st.markdown(f"**Chunk Context:**\n\n{d.get('content_preview')}")
 
                 # Step: Query Rewriting
                 elif step_name == "rewrite_query":

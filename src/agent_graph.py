@@ -85,6 +85,32 @@ def _safe_json_loads(raw_text: str) -> Dict[str, Any]:
     raise ValueError(f"Could not parse valid JSON from text: {cleaned[:100]}")
 
 
+def format_latex_safely(text: str) -> str:
+    """
+    Ensure all LaTeX math equations (including unescaped formulas or sliced blocks) render cleanly
+    without unclosed delimiters or broken backslashes.
+    """
+    if not text:
+        return ""
+    
+    # 1. Wrap standalone LaTeX expressions in $ if not already enclosed
+    # e.g. "factor \frac{1}{\sqrt{d_k}}" -> "factor $\frac{1}{\sqrt{d_k}}$"
+    text = re.sub(r'(?<!\$)\\frac\{([^{}]+)\}\{([^{}]+)\}(?!\$)', r'$\\frac{\1}{\2}$', text)
+    text = re.sub(r'(?<!\$)\\sqrt\{([^{}]+)\}(?!\$)', r'$\\sqrt{\1}$', text)
+    text = re.sub(r'(?<!\$)\\text\{([^{}]+)\}(?!\$)', r'$\\text{\1}$', text)
+
+    # 2. Fix broken unclosed $$ display blocks caused by snippet slicing
+    if text.count("$$") % 2 != 0:
+        text = text + "\n$$"
+
+    # 3. Fix broken unclosed $ inline blocks
+    stripped_dd = text.replace("$$", "")
+    if stripped_dd.count("$") % 2 != 0:
+        text = text + "$"
+
+    return text
+
+
 class GraphState(TypedDict):
     """LangGraph State holding conversational context and CRAG pipeline artifacts."""
     query: str
@@ -186,7 +212,7 @@ class CRAGPipeline:
             "chunks": [
                 {
                     "id": d.id,
-                    "content_snippet": d.page_content[:200] + "...",
+                    "content_snippet": format_latex_safely(d.page_content),
                     "dense_score": d.dense_score,
                     "sparse_score": d.sparse_score,
                     "hybrid_score": d.hybrid_score,
@@ -249,14 +275,14 @@ class CRAGPipeline:
                 rationale = f"Heuristic evaluation based on keyword overlap ({overlap} matches)."
 
             doc.relevance_grade = "relevant" if is_rel else "irrelevant"
-            doc.grade_rationale = rationale
+            doc.grade_rationale = format_latex_safely(rationale)
 
             grading_details.append({
                 "chunk_id": doc.id,
                 "source": doc.metadata.get("source", "unknown"),
                 "grade": doc.relevance_grade,
-                "rationale": rationale,
-                "content_preview": doc.page_content[:150] + "..."
+                "rationale": format_latex_safely(rationale),
+                "content_preview": format_latex_safely(doc.page_content)
             })
 
             if is_rel:
@@ -439,7 +465,7 @@ class CRAGPipeline:
             raw_text = _extract_text(response)
             parsed = _safe_json_loads(raw_text)
             is_grounded = parsed.get("score", "yes").lower() == "yes"
-            rationale = parsed.get("rationale", "Answer is strictly grounded.")
+            rationale = format_latex_safely(parsed.get("rationale", "Answer is strictly grounded."))
             hallucinated_statements = parsed.get("hallucinated_statements", [])
         except Exception as e:
             logger.warning(f"Hallucination check parse error: {e}. Defaulting to grounded.")
