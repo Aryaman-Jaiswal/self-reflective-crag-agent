@@ -198,26 +198,41 @@ if "eval_report" not in st.session_state:
 with st.sidebar:
     st.markdown("### ⚙️ Pipeline Configuration")
     
-    provider = st.selectbox(
-        "LLM Provider",
-        options=["OpenAI", "Google Gemini", "Groq", "Smart Rule-Based (Offline)"],
-        index=0 if settings.openai_api_key else (1 if settings.google_api_key else 3)
-    )
-    
+    # Provider mapping
     provider_map = {
-        "OpenAI": "openai",
         "Google Gemini": "gemini",
+        "OpenAI": "openai",
         "Groq": "groq",
         "Smart Rule-Based (Offline)": "local"
     }
+    reverse_provider_map = {v: k for k, v in provider_map.items()}
+    default_provider_label = reverse_provider_map.get(settings.llm_provider, "Google Gemini" if settings.google_api_key else "OpenAI")
+    
+    provider_options = ["Google Gemini", "OpenAI", "Groq", "Smart Rule-Based (Offline)"]
+    default_provider_idx = provider_options.index(default_provider_label) if default_provider_label in provider_options else 0
+    
+    provider = st.selectbox(
+        "LLM Provider",
+        options=provider_options,
+        index=default_provider_idx
+    )
     selected_provider = provider_map[provider]
     
     model_name = "gpt-4o-mini"
     if selected_provider == "openai":
-        model_name = st.selectbox("OpenAI Model", ["gpt-4o-mini", "gpt-4o", "gpt-3.5-turbo"], index=0)
-        api_key_input = st.text_input("OpenAI API Key", value=settings.openai_api_key or "", type="password")
-        if api_key_input:
-            settings.openai_api_key = api_key_input
+        openai_models = ["gpt-4o-mini", "gpt-4o", "gpt-3.5-turbo"]
+        default_oai_idx = openai_models.index(settings.llm_model_name) if settings.llm_model_name in openai_models else 0
+        model_name = st.selectbox("OpenAI Model", openai_models, index=default_oai_idx)
+        
+        has_oai_key = bool(settings.openai_api_key)
+        if has_oai_key:
+            st.caption("🔒 *API Key active from Streamlit Secrets.*")
+            api_key_input = st.text_input("OpenAI API Key", value="", placeholder="•••••••• (Using secured key)", type="password", help="The app is already using your secured secret key. Enter a custom key only if you want to override it.")
+        else:
+            api_key_input = st.text_input("OpenAI API Key", value="", placeholder="Enter OpenAI API Key", type="password")
+        if api_key_input.strip():
+            settings.openai_api_key = api_key_input.strip()
+
     elif selected_provider == "gemini":
         gemini_options = [
             "gemini-flash-lite-latest",
@@ -229,10 +244,29 @@ with st.sidebar:
             "gemini-1.5-flash",
             "gemini-1.5-pro"
         ]
-        model_name = st.selectbox("Gemini Model", gemini_options, index=0)
-        api_key_input = st.text_input("Google API Key", value=settings.google_api_key or "", type="password")
-        if api_key_input:
-            settings.google_api_key = api_key_input
+        default_gemini_idx = gemini_options.index(settings.llm_model_name) if settings.llm_model_name in gemini_options else 0
+        model_name = st.selectbox("Gemini Model", gemini_options, index=default_gemini_idx)
+        
+        has_gemini_key = bool(settings.google_api_key)
+        if has_gemini_key:
+            st.caption("🔒 *API Key active from Streamlit Secrets.*")
+            api_key_input = st.text_input("Google API Key", value="", placeholder="•••••••• (Using secured key)", type="password", help="The app is already using your secured secret key. Enter a custom key only if you want to override it.")
+        else:
+            api_key_input = st.text_input("Google API Key", value="", placeholder="Enter Google API Key", type="password")
+        if api_key_input.strip():
+            settings.google_api_key = api_key_input.strip()
+
+    elif selected_provider == "groq":
+        groq_models = ["llama-3.3-70b-versatile", "llama-3.1-8b-instant", "mixtral-8x7b-32768"]
+        model_name = st.selectbox("Groq Model", groq_models, index=0)
+        has_groq_key = bool(settings.groq_api_key)
+        if has_groq_key:
+            st.caption("🔒 *API Key active from Streamlit Secrets.*")
+            api_key_input = st.text_input("Groq API Key", value="", placeholder="•••••••• (Using secured key)", type="password")
+        else:
+            api_key_input = st.text_input("Groq API Key", value="", placeholder="Enter Groq API Key", type="password")
+        if api_key_input.strip():
+            settings.groq_api_key = api_key_input.strip()
 
     st.markdown("---")
     st.markdown("### 🎯 Hybrid Retrieval Weights")

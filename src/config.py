@@ -17,6 +17,20 @@ SAMPLE_DOCS_DIR = DATA_DIR / "sample_docs"
 QDRANT_STORAGE_DIR = DATA_DIR / "qdrant_db"
 
 
+def _get_env_or_secret(key: str, default: Optional[str] = None) -> Optional[str]:
+    """Retrieve config from environment variable or Streamlit secrets."""
+    val = os.getenv(key)
+    if val:
+        return val
+    try:
+        import streamlit as st
+        if hasattr(st, "secrets") and key in st.secrets:
+            return str(st.secrets[key])
+    except Exception:
+        pass
+    return default
+
+
 class Settings(BaseModel):
     """Global configuration settings for CRAG agent and components."""
 
@@ -59,20 +73,20 @@ class Settings(BaseModel):
     # LangGraph Agent Settings
     max_retries: int = Field(default=2, description="Maximum query rewrite retries before fallback")
     llm_provider: str = Field(
-        default=os.getenv("LLM_PROVIDER", "openai"),
+        default_factory=lambda: _get_env_or_secret("LLM_PROVIDER", "openai"),
         description="LLM provider: 'openai', 'gemini', 'anthropic', 'groq', or 'local'"
     )
     llm_model_name: str = Field(
-        default=os.getenv("LLM_MODEL", "gpt-4o-mini"),
+        default_factory=lambda: _get_env_or_secret("LLM_MODEL", "gpt-4o-mini"),
         description="LLM model identifier"
     )
     llm_temperature: float = Field(default=0.0, description="LLM temperature")
     
     # API Keys
-    openai_api_key: Optional[str] = Field(default_factory=lambda: os.getenv("OPENAI_API_KEY"))
-    google_api_key: Optional[str] = Field(default_factory=lambda: os.getenv("GOOGLE_API_KEY") or os.getenv("GEMINI_API_KEY"))
-    anthropic_api_key: Optional[str] = Field(default_factory=lambda: os.getenv("ANTHROPIC_API_KEY"))
-    groq_api_key: Optional[str] = Field(default_factory=lambda: os.getenv("GROQ_API_KEY"))
+    openai_api_key: Optional[str] = Field(default_factory=lambda: _get_env_or_secret("OPENAI_API_KEY"))
+    google_api_key: Optional[str] = Field(default_factory=lambda: _get_env_or_secret("GOOGLE_API_KEY") or _get_env_or_secret("GEMINI_API_KEY"))
+    anthropic_api_key: Optional[str] = Field(default_factory=lambda: _get_env_or_secret("ANTHROPIC_API_KEY"))
+    groq_api_key: Optional[str] = Field(default_factory=lambda: _get_env_or_secret("GROQ_API_KEY"))
 
     model_config = {"arbitrary_types_allowed": True}
 
