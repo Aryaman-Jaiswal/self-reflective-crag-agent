@@ -1,11 +1,15 @@
 # Self-Reflective Corrective RAG (CRAG) Agent
 
+[![Live Demo](https://img.shields.io/badge/Live%20Demo-Streamlit%20App-FF4B4B.svg?style=for-the-badge&logo=streamlit)](https://self-reflective-crag-agent-zlmmzx62jrrvkpytzjj7pt.streamlit.app/)
+
 [![Python](https://img.shields.io/badge/Python-3.10%2B-blue.svg)](https://www.python.org/)
 [![LangGraph](https://img.shields.io/badge/Orchestration-LangGraph-orange.svg)](https://github.com/langchain-ai/langgraph)
 [![Vector Store](https://img.shields.io/badge/Vector%20Store-Qdrant-red.svg)](https://qdrant.tech/)
 [![Evaluation](https://img.shields.io/badge/Evaluation-RAGAS-green.svg)](https://github.com/explodinggradients/ragas)
-[![UI](https://img.shields.io/badge/Frontend-Streamlit-FF4B4B.svg)](https://streamlit.io/)
+[![Frontend](https://img.shields.io/badge/Frontend-Streamlit-FF4B4B.svg)](https://streamlit.io/)
 [![License](https://img.shields.io/badge/License-MIT-purple.svg)](LICENSE)
+
+> 🌐 **Live Web Application:** [https://self-reflective-crag-agent-zlmmzx62jrrvkpytzjj7pt.streamlit.app/](https://self-reflective-crag-agent-zlmmzx62jrrvkpytzjj7pt.streamlit.app/)
 
 A production-grade, self-reflective **Corrective Retrieval-Augmented Generation (CRAG)** Agent in Python built with **LangGraph**, **Qdrant**, **FastEmbed / SentenceTransformers**, **BM25**, **Cross-Encoder Reranking**, and **RAGAS** benchmark evaluation.
 
